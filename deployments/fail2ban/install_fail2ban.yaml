@@ -1,8 +1,10 @@
 - name: Install fail2ban
   hosts: all
   tasks:
-  - name: Update repositories cache and install "fail2ban" package
-    become: yes
-    apt:
-      name: fail2ban
-      update_cache: yes
+    - name: Update repositories cache and install "fail2ban" package
+      become: yes
+      apt:
+        name: fail2ban
+        update_cache: yes
+    - name: Check that fail2ban is running
+      import_playbook: check_fail2ban_is_running.yaml
