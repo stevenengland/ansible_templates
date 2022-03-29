@@ -1,0 +1,4 @@
+- name: Update repositories cache and install "fail2ban" package
+  apt:
+    name: fail2ban
+    update_cache: yes
