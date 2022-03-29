@@ -1,0 +1,35 @@
+- name: Configure fail2ban for SSH
+  hosts: all
+  tasks:
+    - name: Add configuration section
+      become: yes
+      blockinfile:
+        create: yes
+        path: /etc/fail2ban/jail.local
+        block: |
+          [sshd]
+          port = ssh
+          logpath = %(sshd_log)s
+          enabled = true
+    - name: Restart service fail2ban, in all cases
+      become: yes
+      ansible.builtin.service:
+        name: fail2ban
+        state: restarted
+    - name: Check status of fail2ban for SSH
+      become: yes
+      command: fail2ban-client status sshd
+      ignore_errors: yes
+      changed_when: false
+      register: service_fail2ban_status
+    - name: Report error
+      fail:
+        msg: |
+          fail2ban jail for SSH is not running.
+          {{ service_fail2ban_status.stdout }}
+          {{ service_fail2ban_status.stderr }}
+      when: service_fail2ban_status.rc != 0
+    - name: Report success
+      ansible.builtin.debug:
+        msg: |
+          {{ service_fail2ban_status.stdout }}
