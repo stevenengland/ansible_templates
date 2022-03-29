@@ -1,4 +1,8 @@
-- name: Update repositories cache and install "fail2ban" package
-  apt:
-    name: fail2ban
-    update_cache: yes
+- name: Install fail2ban
+  hosts: all
+  tasks:
+  - name: Update repositories cache and install "fail2ban" package
+    become: yes
+    apt:
+      name: fail2ban
+      update_cache: yes
