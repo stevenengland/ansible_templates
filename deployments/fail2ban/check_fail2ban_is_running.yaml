@@ -13,4 +13,4 @@
           Output of `systemctl status fail2ban`:
           {{ service_fail2ban_status.stdout }}
           {{ service_fail2ban_status.stderr }}
-        when: service_fail2ban_status | failed
+      when: service_fail2ban_status.rc != 0
