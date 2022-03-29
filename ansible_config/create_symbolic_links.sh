@@ -4,5 +4,5 @@ SCRIPT=$(readlink -f "$0")
 # Absolute path this script is in, thus /home/user/bin
 SCRIPTPATH=$(dirname "$SCRIPT")
 echo "linking $SCRIPTPATH/ansible.cfg"
-ln -sf $SCRIPTPATH/ansible.cfg ~/ansible.cfg
+ln -sf $SCRIPTPATH/ansible.cfg ~/.ansible.cfg
 #ln -sf $SCRIPTPATH/ansible-inventory.ini ~/ansible-inventory.ini
