@@ -1,0 +1,21 @@
+- name: Restart service in all cases
+  become: yes
+  ansible.builtin.service:
+    name: { { service_to_restart } }
+    state: restarted
+- name: Check if service is running
+  command: systemctl status {{ service_to_restart }}
+  ignore_errors: yes
+  changed_when: false
+  register: service_status
+- name: Report error
+  fail:
+    msg: |
+      {{ service_to_restart }} is not running.
+      {{ service_status.stdout }}
+      {{ service_status.stderr }}
+  when: service_status.rc != 0
+- name: Report success
+  ansible.builtin.debug:
+    msg: |
+      {{ service_status.stdout }}
