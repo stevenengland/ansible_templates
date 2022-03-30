@@ -1,7 +1,7 @@
 - name: Restart service in all cases
   become: yes
   ansible.builtin.service:
-    name: { { service_to_restart } }
+    name: "{{ service_to_restart }}"
     state: restarted
 - name: Check if service is running
   command: systemctl status {{ service_to_restart }}
