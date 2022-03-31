@@ -1,0 +1,11 @@
+- name: Install PiHole
+  hosts: all
+  vars:
+    service_to_restart: "lighttpd"
+  tasks:
+    - name: Download install package
+      command: wget -O /tmp/basic-pihole-install.sh https://install.pi-hole.net
+    - name: Install package
+      become: yes
+      command: sudo bash /tmp/basic-pihole-install.sh
+    - include: ../common_plays/restart_and_check_service.yaml
