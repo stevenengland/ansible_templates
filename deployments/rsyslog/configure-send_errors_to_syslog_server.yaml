@@ -1,0 +1,35 @@
+- name: Configure Rsyslog to send all errors to syslog server
+  hosts: all
+  vars:
+    service_to_restart: "rsyslog"
+  vars_prompt:
+    - name: privmode
+      prompt: Is Rsyslog installed on Host (priviliged y) or container (priviliged n)? Shall it be run in privileged mode [y/n]?
+      private: no
+  tasks:
+    - include_vars: rsyslog_vars.yaml
+    - name: Add configuration section
+      become: yes
+      blockinfile:
+        create: yes
+        path: /etc/rsyslog.d/client.conf
+        block: |
+          *.error action(
+            type="omfwd"
+            protocol="{{ syslog_server_protocol }}"
+            port="{{ syslog_server_port }}"
+            target="{{ syslog_server_ip }}"
+            action.resumeRetryCount="-1"
+            action.resumeInterval="60"
+            action.resumeIntervalMax="14400"
+            queue.type="linkedlist"
+            queue.filename="fwdRule1"
+            #queue.spoolDirectory="/var/lib/rsyslog"
+            queue.saveOnShutdown="on"
+            queue.size="100000"
+            queue.maxFileSize="100m"
+          )
+    - name: Activate privileged mode
+      become: yes
+      command: "{% if privmode == 'n' %}sed -i '/imklog/s/^/#/g' /etc/rsyslog.conf{% elif privmode == 'y' %}sed -i '/imklog/s/^#//g' /etc/rsyslog.conf{% else %}false{% endif %}"
+    - include: ../common_plays/restart_and_check_service.yaml

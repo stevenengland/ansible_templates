@@ -1,0 +1,11 @@
+- name: Install rsysylog
+  hosts: all
+  vars:
+    service_to_restart: "rsyslog"
+  tasks:
+    - name: Update repositories cache and install package
+      become: yes
+      apt:
+        name: rsyslog
+        update_cache: yes
+    - include: ../common_plays/restart_and_check_service.yaml

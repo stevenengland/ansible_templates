@@ -1,0 +1,4 @@
+---
+syslog_server_protocol: TCP
+syslog_server_port: 5140
+syslog_server_ip: 192.168.2.x
