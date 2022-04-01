@@ -3,9 +3,53 @@
   vars:
     service_to_restart: "lighttpd"
   tasks:
-    - name: Download install package
-      command: wget -O /tmp/basic-pihole-install.sh https://install.pi-hole.net
+    - name: "Download Pi-Hole installer"
+      become: yes
+      get_url:
+        url: https://install.pi-hole.net
+        dest: ~/install-pihole.sh
+        mode: 0740
+    # pihole unattented install only works if /etc/pihole/setupVars.conf already exists
+    # debug tip: keep track of the install progress by tailing the log-file
+    - name: Create needed directory for unattended installation
+      become: true
+      command: mkdir -p /etc/pihole
+    - name: Create premade config
+      become: true
+      blockinfile:
+        create: yes
+        path: /etc/pihole/setupVars.conf
+        block: |
+          WEBPASSWORD=a215bae8b5ec659b0980a76dlkds09644731cd439cab41494447a8705c22b3aa41c
+          PIHOLE_INTERFACE=eth0
+          IPV4_ADDRESS={{ ansible_ssh_host }}/24
+          IPV6_ADDRESS=
+          QUERY_LOGGING=true
+          INSTALL_WEB=true
+          DNSMASQ_LISTENING=single
+          PIHOLE_DNS_1=192.168.2.1
+          PIHOLE_DNS_2=
+          PIHOLE_DNS_3=
+          PIHOLE_DNS_4=
+          DNS_FQDN_REQUIRED=true
+          DNS_BOGUS_PRIV=true
+          DNSSEC=true
+          TEMPERATUREUNIT=C
+          WEBUIBOXEDLAYOUT=traditional
+          API_EXCLUDE_DOMAINS=
+          API_EXCLUDE_CLIENTS=
+          API_QUERY_LOG_SHOW=all
+          API_PRIVACY_MODE=false
     - name: Install package
       become: yes
-      command: sudo bash /tmp/basic-pihole-install.sh
+      shell: "~/install-pihole.sh --unattended >> /tmp/pihole_install.log"
+      register: dbg_install_pihole
+      args:
+        warn: false
+    - name: Set the password for the webinterface to 'root'
+      become: true
+      command: pihole -a -p root
+    #    - name: Check status of PiHole service
+    #      become: true
+    #      command: pihole status
     - include: ../common_plays/restart_and_check_service.yaml
