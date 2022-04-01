@@ -1,0 +1,73 @@
+- name: Add a cronjob that pulls the certs from a repo server
+  hosts: all
+  vars:
+
+  vars_prompt:
+    - name: ssl_cert_server_user__certs_user_pw
+      prompt: "Enter the password for the user 'certs' on the cert server: "
+      private: yes
+    - name: ssl_cert_server_user__add_user_to_cert_group
+      prompt: Shall a specific local user be added to the ssl-cert group [y/n]?
+      private: no
+  tasks:
+    - include_vars: ssl_cert_vars.yaml
+    - name: Ask user for input
+      pause:
+        prompt: "Which user shall be added? "
+        when: ( ssl_cert_server_user__add_user_to_cert_group == 'y' )
+        register: ssl_cert_server_user__user_to_add_to_cert_group
+        no_log: false
+    - name: Add user to the ssl-cert group
+      become: yes
+      command: usermod -a -G ssl-cert {{ ssl_cert_server_user__user_to_add_to_cert_group }}
+    - name: Check if the SSH key already exists
+      become: true
+      stat:
+        path: /home/root/.ssh/id_rsa
+      register: stat_result
+    - name: Create the ssh key if it doesnt exist already
+      become: yes
+      command: >
+        mkdir -p /home/root/.ssh && \
+        ssh-keygen -t rsa -b 4096 -f ~root/.ssh/id_rsa -N ''
+      when: not stat_result.stat.exists
+    - name: Check if the SSH key was already deployed
+      command: ssh -q -o "BatchMode=yes" certs@{{ ssl_cert_server_ip }} exit
+      ignore_errors: yes
+      changed_when: false
+      register: ssh_key_is_already_deployed
+    - name: Transfer SSH key to cert server
+      become: yes
+      command: sshpass -p {{ ssl_cert_server_user__certs_user_pw }} ssh-copy-id -i /home/root/.ssh/id_rsa certs@{{ ssl_cert_server_ip }}
+      when: ssh_key_is_already_deployed.rc != 0
+    - name: Create local directories where the certs will remain
+      become: yes
+      command: >
+        sudo mkdir -p /etc/letsencrypt/live/
+        sudo mkdir -p /etc/ssl_selfsigned_certificates/
+    - name: Add cronjob to pull certs
+      become: yes
+      blockinfile:
+        create: yes
+        path: /etc/cron.daily/pull_letsencrypt_certs
+        block: |
+          scp -rp certs@{{ ssl_cert_server_ip }}:/etc/letsencrypt/live/intern.familie-england.de /etc/letsencrypt/live
+          scp -rp certs@{{ ssl_cert_server_ip }}:/etc/ssl_selfsigned_certificates/intern.familie-england.de /etc/ssl_selfsigned_certificates
+          if [[ $? -gt 1 ]]
+          then
+                  logger -t letsencrypt_pull -p local0.err "Certificates could not be loaded from server. Code: $?"
+          else
+                  logger -t letsencrypt_pull "Certificates where loaded from server."
+                  chmod 750 /etc/letsencrypt
+                  chmod -R 650 /etc/letsencrypt/*
+                  chown -R root:ssl-cert /etc/letsencrypt
+
+                  chmod 750 /etc/ssl_selfsigned_certificates
+                  chmod -R 650 /etc/ssl_selfsigned_certificates/*
+                  chown -R root:ssl-cert /etc/ssl_selfsigned_certificates
+          fi
+    - name: Make cronjob executable and execute it once
+      become: yes
+      command: >
+        chmod +x /etc/cron.daily/pull_letsencrypt_certs && \
+        /etc/cron.daily/pull_letsencrypt_certs
